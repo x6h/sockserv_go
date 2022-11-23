@@ -53,7 +53,7 @@ func main() {
             fmt.Printf("failed to accept incoming connection. (error: %s)\n", connection_error)
         }
 
-        // start goroutine to handle accepted connection while this loop can keep accepting new connections
+        // start thread to handle the newly accepted connection
         go handle_connection(connection)
     }
 }
