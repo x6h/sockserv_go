@@ -11,7 +11,7 @@ const (
     SERVER_TYPE = "tcp"
     SERVER_HOST = "localhost"
     SERVER_PORT = "8080"
-    // maximum connections/clients allowed to be connected
+    // maximum connections
     SERVER_MAX_CONNECTIONS = 3
     // maximum recieve message length
     // (overflow has been observed to be read on the next "connection.Read" call)
@@ -32,78 +32,21 @@ func main() {
     }
 
     for {
-        // don't continue if max connections have been reached
-        if active_connections == SERVER_MAX_CONNECTIONS {
-            continue
-        }
-
         // accept incoming connection
         connection, connection_error := listener.Accept()
 
         if connection_error != nil {
             fmt.Printf("failed to accept incoming connection. (error: %s)\n", connection_error)
+            continue
+        }
+
+        // don't continue if max connections have been reached
+        if active_connections == SERVER_MAX_CONNECTIONS {
+            connection.Close()
+            continue
         }
 
         // start thread to handle the newly accepted connection
-        go handle_connection(connection)
+        go HandleConnection(connection)
     }
-}
-
-func handle_connection(connection net.Conn) {
-    // add client to the client list
-    for i := 0; i < SERVER_MAX_CONNECTIONS; i++ {
-        if connection_list[i] == nil {
-            connection_list[i] = connection
-            active_connections++
-            break
-        }
-    }
-
-    fmt.Printf("server (con): active: %d\n", active_connections)
-
-    for {
-        // read message from the client
-        message := make([]byte, SERVER_MSG_LENGTH)
-        _, read_error := connection.Read(message)
-
-        // send client message to other clients
-        for i := 0; i < SERVER_MAX_CONNECTIONS; i++ {
-            // skip invalid connections
-            if (connection_list[i] == nil) {
-                continue
-            }
-
-            // skip the author of the message
-            if connection_list[i] == connection {
-                continue
-            }
-
-            _, write_error := connection_list[i].Write(message)
-
-            if write_error != nil {
-                fmt.Printf("failed to send message to clients. (error: %s)\n", write_error)
-            }
-        }
-
-        if read_error == nil {
-            fmt.Printf("server (msg): %s\n", string(message))
-        } else {
-            handle_disconnection(connection)
-            break
-        }
-    }
-}
-
-func handle_disconnection(connection net.Conn) {
-    for i := 0; i < SERVER_MAX_CONNECTIONS; i++ {
-        if connection_list[i] == connection {
-            // close connection, not sure if this affects anything tho
-            connection_list[i].Close()
-            // remove connection from connection list
-            connection_list[i] = nil
-            active_connections--
-        }
-    }
-
-    fmt.Printf("server (dis): active: %d\n", active_connections)
 }
