@@ -32,22 +32,13 @@ func main() {
     }
 
     for {
-        deny_connection := false
+        // don't continue if max connections have been reached
+        if active_connections == SERVER_MAX_CONNECTIONS {
+            continue
+        }
 
         // accept incoming connection
         connection, connection_error := listener.Accept()
-
-        for i := 0; i < SERVER_MAX_CONNECTIONS; i++ {
-            // if there are no slots available, deny further connection handling
-            if i == SERVER_MAX_CONNECTIONS - 1 && connection_list[i] != nil {
-                deny_connection = true
-            }
-        }
-
-        if deny_connection {
-            connection.Close()
-            continue
-        }
 
         if connection_error != nil {
             fmt.Printf("failed to accept incoming connection. (error: %s)\n", connection_error)
@@ -107,7 +98,7 @@ func handle_disconnection(connection net.Conn) {
     for i := 0; i < SERVER_MAX_CONNECTIONS; i++ {
         if connection_list[i] == connection {
             // close connection, not sure if this affects anything tho
-            connection.Close()
+            connection_list[i].Close()
             // remove connection from connection list
             connection_list[i] = nil
             active_connections--
